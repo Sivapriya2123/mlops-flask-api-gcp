@@ -346,12 +346,14 @@ STATUS: SUCCESS
 
 Run:
 
+```
 gcloud run deploy handwritten-digit-api \
   --image gcr.io/nice-champion-511522-h6/handwritten-digit-api \
   --platform managed \
   --region us-east1 \
   --allow-unauthenticated \
   --port 8080
+```
 
 After deployment, Google Cloud will provide a service URL.
 
