@@ -1,40 +1,80 @@
 from flask import Flask, request, jsonify
-from predict import predict_iris
+from predict import predict_digit
 import os
 
 app = Flask(__name__)
 
-# Map numeric model output to human-readable class
-label_map = {
-    0: "setosa",
-    1: "versicolor",
-    2: "virginica"
-}
 
-@app.route('/predict', methods=['POST'])
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "healthy",
+        "service": "handwritten-digit-classifier"
+    }), 200
+
+
+@app.route("/model-info", methods=["GET"])
+def model_info():
+    return jsonify({
+        "model": "RandomForestClassifier",
+        "dataset": "scikit-learn digits",
+        "classes": list(range(10)),
+        "input_format": "image file",
+        "image_size": "8x8 grayscale after preprocessing"
+    }), 200
+
+
+@app.route("/predict", methods=["POST"])
 def predict():
-    data = request.get_json()
+    # Check whether an image was included
+    if "image" not in request.files:
+        return jsonify({
+            "error": "No image file provided",
+            "expected_field": "image"
+        }), 400
 
-    sepal_length = float(data['sepal_length'])
-    sepal_width  = float(data['sepal_width'])
-    petal_length = float(data['petal_length'])
-    petal_width  = float(data['petal_width'])
+    image_file = request.files["image"]
 
-    print(sepal_length, sepal_width, petal_length, petal_width)
+    # Check for empty filename
+    if image_file.filename == "":
+        return jsonify({
+            "error": "No image selected"
+        }), 400
 
-    # call model
-    prediction = predict_iris(sepal_length, sepal_width, petal_length, petal_width)
+    # Restrict supported file types
+    allowed_extensions = {"png", "jpg", "jpeg"}
 
-    # convert numeric class → label string for frontend
+    if "." not in image_file.filename:
+        return jsonify({
+            "error": "Invalid file type"
+        }), 400
+
+    extension = image_file.filename.rsplit(".", 1)[1].lower()
+
+    if extension not in allowed_extensions:
+        return jsonify({
+            "error": "Unsupported file type",
+            "supported_types": sorted(allowed_extensions)
+        }), 400
+
     try:
-        pred_int = int(prediction)
-        pred_label = label_map.get(pred_int, str(pred_int))
-    except Exception:
-        pred_label = str(prediction)
+        image_bytes = image_file.read()
 
-    return jsonify({'prediction': pred_label})
+        prediction, confidence = predict_digit(image_bytes)
 
-if __name__ == '__main__':
+        return jsonify({
+            "prediction": prediction,
+            "confidence": round(confidence, 4)
+        }), 200
+
+    except Exception as exc:
+        return jsonify({
+            "error": "Unable to process image",
+            "details": str(exc)
+        }), 400
+
+
+if __name__ == "__main__":
     app.run(
         debug=True,
         host="0.0.0.0",

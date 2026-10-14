@@ -1,29 +1,120 @@
-import requests
-import json
+import io
 
-url = 'http://127.0.0.1:8080/predict'
+import pytest
+from PIL import Image
 
-payload = {
-    'sepal_length': 5.1,
-    'sepal_width': 3.5,
-    'petal_length': 1.4,
-    'petal_width': 0.2
-}
+from main import app
 
-headers = {
-    'Content-Type': 'application/json'
-}
 
-response = requests.post(url, data=json.dumps(payload), headers=headers)
+@pytest.fixture
+def client():
+    app.config["TESTING"] = True
 
-print("Status:", response.status_code)
-print("Body:", response.text)
+    with app.test_client() as client:
+        yield client
 
-if response.status_code == 200:
-    try:
-        prediction = response.json()['prediction']
-        print('Predicted species:', prediction)
-    except Exception as e:
-        print("Could not parse JSON:", e)
-else:
-    print('Error:', response.status_code)
+
+def create_test_image():
+    image = Image.new("L", (28, 28), color=255)
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return buffer
+
+
+def test_health_endpoint(client):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["status"] == "healthy"
+    assert data["service"] == "handwritten-digit-classifier"
+
+
+def test_model_info_endpoint(client):
+    response = client.get("/model-info")
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["model"] == "RandomForestClassifier"
+    assert data["dataset"] == "scikit-learn digits"
+    assert data["classes"] == list(range(10))
+
+
+def test_predict_missing_image(client):
+    response = client.post("/predict")
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert data["error"] == "No image file provided"
+
+
+def test_predict_invalid_file_type(client):
+    response = client.post(
+        "/predict",
+        data={
+            "image": (
+                io.BytesIO(b"not an image"),
+                "sample.txt"
+            )
+        },
+        content_type="multipart/form-data"
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert data["error"] == "Unsupported file type"
+
+
+def test_predict_corrupted_image(client):
+    response = client.post(
+        "/predict",
+        data={
+            "image": (
+                io.BytesIO(b"this is not a real png image"),
+                "sample.png"
+            )
+        },
+        content_type="multipart/form-data"
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert data["error"] == "Unable to process image"
+
+
+def test_valid_prediction(client):
+    image = create_test_image()
+
+    response = client.post(
+        "/predict",
+        data={
+            "image": (
+                image,
+                "digit.png"
+            )
+        },
+        content_type="multipart/form-data"
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert "prediction" in data
+    assert "confidence" in data
+
+    assert 0 <= data["prediction"] <= 9
+    assert 0.0 <= data["confidence"] <= 1.0

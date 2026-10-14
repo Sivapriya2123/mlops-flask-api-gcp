@@ -1,16 +1,19 @@
-FROM python:3.9
+FROM python:3.11-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY model/ ./model/
 COPY src/ ./src/
 
-#This line tells Docker that the container will listen on the port specified by the environment variable PORT
-EXPOSE $PORT 
+ENV PORT=8080
 
-CMD ["sh", "-c", "python src/main.py  --server.port $PORT"]
-# sh to allow for accesing environmental variabels like $port
-# -c to run this within the container
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')" || exit 1
+
+CMD ["python", "src/main.py"]

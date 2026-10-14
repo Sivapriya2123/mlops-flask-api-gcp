@@ -1,5 +1,9 @@
 pandas
 scikit-learn
-pandas
 streamlit
 flask
+joblib
+numpy
+Pillow
+requests
+pytest
