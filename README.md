@@ -624,7 +624,7 @@ This project was deployed and tested successfully on Google Cloud Run. The publi
 
 **Deployed API:** https://handwritten-digit-api-916630904861.us-east1.run.app/
 
-Cloud Run usage can incur charges, so I may adjust or suspend the deployment to manage available cloud credits. If the endpoint is unavailable during grading, please contact me through Canvas or the course communication channel so that I can coordinate a time for verification. The Flask API can also be built and tested locally using the Docker commands in this README.
+**Note for Graders:** If the Cloud Run endpoint is unavailable during grading, please contact me(sugumaran.s@northeastern.edu) to arrange verification. Deployment and testing screenshots are provided above.
 
 ## Successful End-to-End Workflow
 
