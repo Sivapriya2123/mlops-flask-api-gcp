@@ -4,6 +4,22 @@ import os
 
 app = Flask(__name__)
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "message": "Welcome to the Handwritten Digit Recognition API!",
+        "description": "This Flask API predicts handwritten digits from 0 to 9 using a Random Forest classifier.",
+        "model": "RandomForestClassifier",
+        "dataset": "scikit-learn Digits",
+        "endpoints": {
+            "GET /": "API homepage",
+            "GET /health": "Check API health",
+            "GET /model-info": "View model information",
+            "POST /predict": "Upload a digit image using the image form field"
+        },
+        "github": "https://github.com/Sivapriya2123/mlops-flask-api-gcp"
+    }), 200
+
 
 @app.route("/health", methods=["GET"])
 def health():
